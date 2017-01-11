@@ -28,8 +28,6 @@ public class DiscretizerService {
 		final GeoJsonDiscretizer geoJsonDiscretizer = new GeoJsonDiscretizer(new GeoJsonParser(),
 				new DiscretizerFactoryImpl());
 
-		port(4444);
-
 		enableCORS("*", "*", "*");
 
 		post("discretize/geojson/:precision",

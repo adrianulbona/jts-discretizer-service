@@ -90,7 +90,7 @@
         }
     }));
 
-    var discretizerUrl = "http://localhost:4444/discretize/geojson/5";
+    var discretizerUrl = "http://localhost:4567/discretize/geojson/5";
     map.on('draw:created', function (e) {
         var geometry = JSON.stringify(e.layer.toGeoJSON().geometry);
         $.post( discretizerUrl, geometry ).done(function( hashes ) {
