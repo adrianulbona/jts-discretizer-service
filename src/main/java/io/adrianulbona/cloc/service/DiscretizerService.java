@@ -2,13 +2,18 @@ package io.adrianulbona.cloc.service;
 
 import com.google.gson.Gson;
 import com.vividsolutions.jts.io.ParseException;
+import io.adrianulbona.cloc.service.borders.Border;
+import io.adrianulbona.cloc.service.borders.BordersStreamer;
 import io.github.adrianulbona.jts.discretizer.DiscretizerFactoryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.Request;
 
 import java.io.IOException;
+import java.util.Map;
 
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toMap;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static spark.Spark.*;
 
@@ -28,7 +33,11 @@ public class DiscretizerService {
 		final GeoJsonDiscretizer geoJsonDiscretizer = new GeoJsonDiscretizer(new GeoJsonParser(),
 				new DiscretizerFactoryImpl());
 
-		enableCORS("*", "*", "*");
+		final Map<String, Border> borders = new BordersStreamer().stream()
+				.collect(toMap(Border::getCode, identity()));
+
+		enableCORS();
+		before("/*", (req, res) -> res.type("application/json"));
 
 		post("discretize/geojson/:precision",
 				(req, res) -> geoJsonDiscretizer.apply(geoJson(req), precision(req)));
@@ -36,6 +45,11 @@ public class DiscretizerService {
 		exception(NumberFormatException.class, (e, req, res) -> halt(SC_BAD_REQUEST, e.getMessage()));
 		exception(IllegalArgumentException.class, (e, req, res) -> halt(SC_BAD_REQUEST, e.getMessage()));
 		exception(ParseException.class, (e, req, res) -> halt(SC_BAD_REQUEST, e.getMessage()));
+
+		final Gson gson = new Gson();
+		get("border/:code", (req, res) -> borders.get(req.params("code")
+				.toUpperCase()), gson::toJson);
+		get("border", (req, res) -> borders.keySet(), gson::toJson);
 
 		LOGGER.info("Created Routes...");
 	}
@@ -49,29 +63,11 @@ public class DiscretizerService {
 	}
 
 
-	private static void enableCORS(final String origin, final String methods, final String headers) {
-
-		options("/*", (request, response) -> {
-
-			String accessControlRequestHeaders = request.headers("Access-Control-Request-Headers");
-			if (accessControlRequestHeaders != null) {
-				response.header("Access-Control-Allow-Headers", accessControlRequestHeaders);
-			}
-
-			String accessControlRequestMethod = request.headers("Access-Control-Request-Method");
-			if (accessControlRequestMethod != null) {
-				response.header("Access-Control-Allow-Methods", accessControlRequestMethod);
-			}
-
-			return "OK";
-		});
-
+	private static void enableCORS() {
 		before((request, response) -> {
-			response.header("Access-Control-Allow-Origin", origin);
-			response.header("Access-Control-Request-Method", methods);
-			response.header("Access-Control-Allow-Headers", headers);
-			// Note: this may or may not be necessary in your particular application
-			response.type("application/json");
+			response.header("Access-Control-Allow-Origin", "*");
+			response.header("Access-Control-Request-Method", "*");
+			response.header("Access-Control-Allow-Headers", "*");
 		});
 	}
 }
